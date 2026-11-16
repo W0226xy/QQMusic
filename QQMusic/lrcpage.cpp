@@ -25,6 +25,7 @@ LrcPage::~LrcPage()
 
 bool LrcPage::parseLrcFile(const QString &lrcFilePath)
 {
+    clearLyrics();
     //1.打开文件
     QFile file(lrcFilePath);
     if(!file.open(QIODevice::ReadOnly))
@@ -32,9 +33,6 @@ bool LrcPage::parseLrcFile(const QString &lrcFilePath)
         qDebug()<<"打开lrc文件"<<lrcFilePath<<"失败";
         return false;
     }
-
-    //将上一首歌的lrc歌词清空
-    lrcWordLines.clear();
 
     //一次性读取一行歌词
     while(!file.atEnd())
@@ -76,6 +74,12 @@ bool LrcPage::parseLrcFile(const QString &lrcFilePath)
         qDebug()<<e.lrcTime<<":"<<e.lrcText;
     }
     return true;
+}
+
+void LrcPage::clearLyrics()
+{
+    lrcWordLines.clear();
+    showLrcWordLine(0);
 }
 
 void LrcPage::showLrcWordLine(qint64 time)

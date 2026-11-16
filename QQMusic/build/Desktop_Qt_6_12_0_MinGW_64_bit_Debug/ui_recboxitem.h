@@ -26,6 +26,7 @@ public:
     QLabel *recMusicImage;
     QPushButton *recMusicBtn;
     QLabel *recBoxItemText;
+    QLabel *recBoxItemArtist;
 
     void setupUi(QWidget *RecBoxItem)
     {
@@ -60,6 +61,13 @@ public:
 
         verticalLayout->addWidget(recBoxItemText);
 
+        recBoxItemArtist = new QLabel(RecBoxItem);
+        recBoxItemArtist->setObjectName("recBoxItemArtist");
+        recBoxItemArtist->setStyleSheet(QString::fromUtf8("color: #888888;"));
+        recBoxItemArtist->setAlignment(Qt::AlignCenter);
+
+        verticalLayout->addWidget(recBoxItemArtist);
+
 
         retranslateUi(RecBoxItem);
 
@@ -72,6 +80,7 @@ public:
         recMusicImage->setText(QString());
         recMusicBtn->setText(QString());
         recBoxItemText->setText(QCoreApplication::translate("RecBoxItem", "\346\216\250\350\215\220-001", nullptr));
+        recBoxItemArtist->setText(QCoreApplication::translate("RecBoxItem", "\346\255\214\346\211\213", nullptr));
     } // retranslateUi
 
 };

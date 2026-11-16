@@ -577,12 +577,44 @@ QPushButton:hover
                   <height>0</height>
                  </size>
                 </property>
-                <property name="styleSheet">
-                 <string notr="true">#scrollArea {
+                 <property name="styleSheet">
+                  <string notr="true">#scrollArea {
     background-color: #FAFAFA;
     border: none;
+}
+
+#scrollArea QScrollBar:vertical {
+    width: 10px;
+    margin: 6px 2px 6px 2px;
+    background: transparent;
+}
+
+#scrollArea QScrollBar::handle:vertical {
+    min-height: 48px;
+    border-radius: 3px;
+    background: #D5D9DC;
+}
+
+#scrollArea QScrollBar::handle:vertical:hover {
+    background: #AEB5BA;
+}
+
+#scrollArea QScrollBar::handle:vertical:pressed {
+    background: #1ECD97;
+}
+
+#scrollArea QScrollBar::add-line:vertical,
+#scrollArea QScrollBar::sub-line:vertical {
+    height: 0px;
+    border: none;
+    background: transparent;
+}
+
+#scrollArea QScrollBar::add-page:vertical,
+#scrollArea QScrollBar::sub-page:vertical {
+    background: transparent;
 }</string>
-                </property>
+                 </property>
                 <property name="widgetResizable">
                  <bool>true</bool>
                 </property>

@@ -6,6 +6,7 @@ debug/main.o
 debug/music.o
 debug/musiclist.o
 debug/musicslider.o
+debug/onlinemusicservice.o
 debug/qqmusic.o
 debug/recbox.o
 debug/recboxitem.o
@@ -16,6 +17,7 @@ debug/moc_commonpage.o
 debug/moc_listitembox.o
 debug/moc_lrcpage.o
 debug/moc_musicslider.o
+debug/moc_onlinemusicservice.o
 debug/moc_qqmusic.o
 debug/moc_recbox.o
 debug/moc_recboxitem.o

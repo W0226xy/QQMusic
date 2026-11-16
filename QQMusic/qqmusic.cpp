@@ -12,12 +12,18 @@
 #include<QSqlQuery>
 #include<QMediaMetaData>
 #include<QRandomGenerator>
-#include<algorithm>
-#include<random>
+#include<QNetworkReply>
+#include<QTimer>
 QQMusic::QQMusic(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::QQMusic)
+    , player(nullptr)
+    , audioOutput(nullptr)
+    , totalTime(0)
     , currentIndex(-1)
+    , onlineMusicService(nullptr)
+    , refreshRecommendationsButton(nullptr)
+    , recommendationStatusLabel(nullptr)
 {
     ui->setupUi(this);
     initui();
@@ -62,9 +68,21 @@ void QQMusic::initui()
     ui->stackedWidget->setCurrentIndex(4);
     currentPage=ui->localPage;
 
-    srand(time(NULL));
-    ui->recMusicBox->initRecBoxUi(randomPiction(),1);
-    ui->supplyMusicBox->initRecBoxUi(randomPiction(),2);
+    ui->recMusicBox->initRecBoxUi(1);
+    ui->supplyMusicBox->initRecBoxUi(2);
+    onlineMusicService = new OnlineMusicService(this);
+    refreshRecommendationsButton = new QPushButton(QStringLiteral("刷新推荐"), this);
+    refreshRecommendationsButton->setCursor(Qt::PointingHandCursor);
+    refreshRecommendationsButton->setMinimumWidth(100);
+    refreshRecommendationsButton->setStyleSheet(QStringLiteral(
+        "QPushButton { padding: 7px 16px; border: none; border-radius: 4px; "
+        "background: #1ECD97; color: white; }"
+        "QPushButton:disabled { background: #A8DCCB; }"));
+    recommendationStatusLabel = new QLabel(QStringLiteral("正在准备在线推荐…"), this);
+    recommendationStatusLabel->setStyleSheet(QStringLiteral("color: #777777;"));
+    recommendationStatusLabel->setWordWrap(true);
+    ui->verticalLayout_7->insertWidget(1, refreshRecommendationsButton, 0, Qt::AlignRight);
+    ui->verticalLayout_7->insertWidget(2, recommendationStatusLabel);
 
     //设置CommonPage信息
     ui->likePage->setMusicListType(PageType::LIKEE_PAGE);
@@ -91,7 +109,6 @@ void QQMusic::initui()
     lrcpageAnimation->setDuration(250);//设置动画时间
     lrcpageAnimation->setStartValue(QRect(10,10+lrcpage->height(),lrcpage->width(),lrcpage->height()));//起始时间
     lrcpageAnimation->setEndValue(QRect(10,10,lrcpage->width(),lrcpage->height()));
-
 }
 
 void QQMusic::initPlayer()
@@ -125,6 +142,15 @@ void QQMusic::initPlayer()
 
     connect(player, &QMediaPlayer::metaDataChanged, this,
             &QQMusic::onMetaDataChanged);
+    connect(player, &QMediaPlayer::errorOccurred, this,
+            [this](QMediaPlayer::Error, const QString &errorString) {
+        qWarning() << "媒体播放失败:" << errorString;
+        if (recommendationStatusLabel && currentIndex >= 0
+                && currentIndex < currentQueue.size()
+                && currentQueue.at(currentIndex).source == MusicSource::Online) {
+            recommendationStatusLabel->setText(QStringLiteral("在线播放失败：%1").arg(errorString));
+        }
+    });
 }
 
 void QQMusic::connectSignalAndSlots()
@@ -170,33 +196,28 @@ void QQMusic::connectSignalAndSlots()
 
     //歌词按钮点击
     connect(ui->lrcWord,&QPushButton::clicked,this,&QQMusic::onLrcWordClicked);
-}
 
-QJsonArray QQMusic::randomPiction()
-{
-    //推荐文本+推荐图片路径
-    QVector<QString> vecImageName;
-    vecImageName<<"001.png"<<"003.png"<<"004.png"<<"005.png"<<"006.png"<<"007.png"<<"008.png"<<"009.png"
-               <<"010.png"<<"011.png"<<"012.png"<<"013.png"<<"014.png"<<"015.png"<<"016.png"<<"017.png"
-              <<"018.png"<<"019.png"<<"020.png"<<"021.png"<<"022.png"<<"023.png"<<"024.png"<<"025.png"
-              <<"026.png"<<"027.png"<<"028.png"<<"029.png"<<"030.png"<<"031.png"<<"032.png"<<"033.png"
-                <<"034.png"<<"035.png"<<"036.png"<<"037.png"<<"038.png"<<"039.png"<<"040.png";
-    std::mt19937 generator(std::random_device{}());
-    std::shuffle(vecImageName.begin(), vecImageName.end(), generator);
-
-    //path:"/images/rec/"+vecImageName[i];
-    //text:推荐-001
-
-    QJsonArray objArray;
-    for(int i=0;i<vecImageName.size();i++)
-    {
-        QJsonObject obj;
-        obj.insert("path",":/images/rec/"+vecImageName[i]);//键值对，path 和 text
-        QString strText = QString("推荐-%1").arg(i + 1, 3, 10, QChar('0'));//i占3位，10进制,如果不够3位，左边用字符串0填充
-        obj.insert("text",strText);
-        objArray.append(obj);
-    }
-    return objArray;
+    connect(refreshRecommendationsButton, &QPushButton::clicked,
+            this, &QQMusic::refreshOnlineRecommendations);
+    connect(ui->recMusicBox, &RecBox::playRequested,
+            this, &QQMusic::onOnlineTrackRequested);
+    connect(ui->supplyMusicBox, &RecBox::playRequested,
+            this, &QQMusic::onOnlineTrackRequested);
+    connect(onlineMusicService, &OnlineMusicService::tracksReady,
+            this, &QQMusic::onOnlineTracksReady);
+    connect(onlineMusicService, &OnlineMusicService::requestFailed, this,
+            [this](const QString &message) {
+        recommendationStatusLabel->setText(message);
+    });
+    connect(onlineMusicService, &OnlineMusicService::loadingChanged, this,
+            [this](bool loading) {
+        refreshRecommendationsButton->setEnabled(!loading);
+        refreshRecommendationsButton->setText(loading
+                ? QStringLiteral("加载中…") : QStringLiteral("刷新推荐"));
+        if (loading)
+            recommendationStatusLabel->setText(QStringLiteral("正在从 Jamendo 获取在线歌曲…"));
+    });
+    QTimer::singleShot(0, this, &QQMusic::refreshOnlineRecommendations);
 }
 
 void QQMusic::initSqlite()
@@ -358,8 +379,6 @@ void QQMusic::on_addLocal_clicked()
 
         ui->localPage->reFresh(musicList);
 
-        //localPage中的歌曲添加到媒体播放列表中
-        playList = ui->localPage->musicUrls(musicList);
     }
 
 }
@@ -399,16 +418,10 @@ void QQMusic::onPlayMusic()
     {
         //启动后从数据库恢复的歌曲尚未写入运行时播放列表时，
         //直接点击底部播放键也应能播放，而不是对空媒体源调用 play()。
-        if (playList.isEmpty()) {
-            playList = currentPage->musicUrls(musicList);
-            if (playList.isEmpty()) {
-                currentPage = ui->localPage;
-                playList = currentPage->musicUrls(musicList);
-            }
-        }
-
-        if (!playList.isEmpty()) {
-            if (currentIndex < 0 || currentIndex >= playList.size())
+        if (currentQueue.isEmpty()) {
+            playAllMusicOfCommonPage(ui->localPage, 0);
+        } else {
+            if (currentIndex < 0 || currentIndex >= currentQueue.size())
                 playAt(0);
             else
                 player->play();
@@ -476,22 +489,17 @@ void QQMusic::onPlaybackModelClicked()
 
 void QQMusic::onCurrentIndexChanged(int index)
 {
-    if (index < 0 || index >= playList.size() || currentPage == nullptr)
+    if (index < 0 || index >= currentQueue.size())
         return;
 
     currentIndex=index;
-    //由于CommonPage页面中的歌曲和正在播放的播放列表中的歌曲索引相同
-    //知道歌曲在playlist中的索引后，到CommonPage中获取
-    //playlist中的歌曲就是根据CommonPage中的musicOfPage加载
-
-    //通过索引找到歌曲，然后修改歌曲的isHistory属性
-    QString musicId =currentPage->getMusicIdByIndex(index);
-    auto it=musicList.findMusicByMusicId(musicId);
-    if(it!=musicList.end())
-    {
-        it->setIsHistory(true);
+    const PlaybackItem &item = currentQueue.at(index);
+    if (item.source == MusicSource::Local) {
+        auto it=musicList.findMusicByMusicId(item.id);
+        if(it!=musicList.end())
+            it->setIsHistory(true);
+        ui->recentPage->reFresh(musicList);
     }
-    ui->recentPage->reFresh(musicList);
 }
 
 void QQMusic::onPlayAll(PageType pageType)
@@ -521,7 +529,22 @@ void QQMusic::onPlayAll(PageType pageType)
 void QQMusic::playAllMusicOfCommonPage(CommonPage *page, int index)
 {
     currentPage=page;
-    playList = page->musicUrls(musicList);
+    currentQueue.clear();
+    const QList<QUrl> urls = page->musicUrls(musicList);
+    for (int i = 0; i < urls.size(); ++i) {
+        const QString id = page->getMusicIdByIndex(i);
+        auto it = musicList.findMusicByMusicId(id);
+        if (it == musicList.end())
+            continue;
+        PlaybackItem item;
+        item.source = MusicSource::Local;
+        item.id = id;
+        item.name = it->getMusicName();
+        item.artist = it->getMusicSinger();
+        item.url = it->getMusicUrl();
+        item.duration = it->getMusicDuration();
+        currentQueue.append(item);
+    }
     playAt(index);
 
 }
@@ -529,6 +552,122 @@ void QQMusic::playAllMusicOfCommonPage(CommonPage *page, int index)
 void QQMusic::playMusicByIndex(CommonPage *page, int index)
 {
     playAllMusicOfCommonPage(page,index);
+}
+
+void QQMusic::refreshOnlineRecommendations()
+{
+    if (onlineMusicService->isLoading())
+        return;
+    // 多取一些候选，以便刷新时优先避开最近展示过的歌曲。
+    onlineMusicService->fetchTracks(36);
+}
+
+void QQMusic::onOnlineTracksReady(const QList<OnlineTrack> &tracks)
+{
+    QList<OnlineTrack> selected;
+    QSet<QString> selectedIds;
+    for (const OnlineTrack &track : tracks) {
+        if (!recentlyRecommendedIds.contains(track.id) && !selectedIds.contains(track.id)) {
+            selected.append(track);
+            selectedIds.insert(track.id);
+            if (selected.size() == 12)
+                break;
+        }
+    }
+    // 曲库响应不足时适当放宽跨批次去重，但同一批次仍不重复。
+    for (const OnlineTrack &track : tracks) {
+        if (selected.size() == 12)
+            break;
+        if (!selectedIds.contains(track.id)) {
+            selected.append(track);
+            selectedIds.insert(track.id);
+        }
+    }
+
+    if (selected.isEmpty()) {
+        recommendationStatusLabel->setText(QStringLiteral("本次没有可播放的在线歌曲，已保留原推荐。"));
+        return;
+    }
+
+    onlineTracks = selected;
+    if (recentlyRecommendedIds.size() > 120)
+        recentlyRecommendedIds.clear();
+    for (const OnlineTrack &track : onlineTracks)
+        recentlyRecommendedIds.insert(track.id);
+
+    ui->recMusicBox->setTracks(onlineTracks.mid(0, 4));
+    ui->supplyMusicBox->setTracks(onlineTracks.mid(4, 8));
+    recommendationStatusLabel->setText(onlineTracks.size() >= 12
+            ? QStringLiteral("已加载 12 首 Jamendo 在线歌曲")
+            : QStringLiteral("Jamendo 本次仅返回 %1 首可播放歌曲").arg(onlineTracks.size()));
+}
+
+void QQMusic::onOnlineTrackRequested(const OnlineTrack &track)
+{
+    currentQueue.clear();
+    currentPage = nullptr;
+    int requestedIndex = -1;
+    for (const OnlineTrack &onlineTrack : onlineTracks) {
+        PlaybackItem item;
+        item.source = MusicSource::Online;
+        item.id = onlineTrack.id;
+        item.name = onlineTrack.name;
+        item.artist = onlineTrack.artist;
+        item.url = onlineTrack.audioUrl;
+        item.coverUrl = onlineTrack.coverUrl;
+        item.duration = onlineTrack.duration;
+        if (onlineTrack.id == track.id)
+            requestedIndex = currentQueue.size();
+        currentQueue.append(item);
+    }
+    if (requestedIndex >= 0)
+        playAt(requestedIndex);
+}
+
+void QQMusic::updateCurrentTrackUi()
+{
+    if (currentIndex < 0 || currentIndex >= currentQueue.size())
+        return;
+
+    const PlaybackItem &item = currentQueue.at(currentIndex);
+    ui->musicName->setText(item.name.isEmpty() ? QStringLiteral("未知歌曲") : item.name);
+    ui->musicSinger->setText(item.artist.isEmpty() ? QStringLiteral("未知歌手") : item.artist);
+    ui->musicCover->setPixmap(QPixmap(QStringLiteral(":/images/rec/001.png")));
+    ui->musicCover->setScaledContents(true);
+    ++coverRequestSerial; // 使上一首歌尚未完成的封面请求失效。
+
+    if (item.source == MusicSource::Online) {
+        lrcpage->clearLyrics();
+        loadCurrentCover(item.coverUrl);
+        return;
+    }
+
+    auto it = musicList.findMusicByMusicId(item.id);
+    if (it != musicList.end())
+        lrcpage->parseLrcFile(it->getLrcFilePath());
+    else
+        lrcpage->clearLyrics();
+}
+
+void QQMusic::loadCurrentCover(const QUrl &url)
+{
+    if (!url.isValid())
+        return;
+
+    const quint64 serial = coverRequestSerial;
+    QNetworkRequest request(url);
+    request.setTransferTimeout(10000);
+    QNetworkReply *reply = coverManager.get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, serial]() {
+        const QByteArray data = reply->readAll();
+        const bool succeeded = reply->error() == QNetworkReply::NoError;
+        reply->deleteLater();
+        if (!succeeded || serial != coverRequestSerial)
+            return;
+        QPixmap pixmap;
+        if (pixmap.loadFromData(data))
+            ui->musicCover->setPixmap(pixmap);
+    });
 }
 
 void QQMusic::setPlayerMuted(bool isMuted)
@@ -559,7 +698,7 @@ void QQMusic::onPositionChanged(qint64 position)
     ui->currentTime->setText(QString("%1:%2").arg(position/1000/60,2,10,QChar('0'))
                              .arg(position/1000%60,2,10,QChar('0')));
     //更新进度条位置
-    ui->progressBar->setStep(position/(float)totalTime);
+    ui->progressBar->setStep(totalTime > 0 ? position / static_cast<float>(totalTime) : 0.0f);
     //在歌词界面同步显示歌词
 
     if(currentIndex>=0)
@@ -581,20 +720,9 @@ void QQMusic::onMusicSliderChanged(float ration)
 
 void QQMusic::onMetaDataChanged()
 {
-    //歌曲名称、歌曲作者直接到Music对象中获取
-    //此时需要知道媒体源在播放列表中的索引
-    QString musicId=currentPage->getMusicIdByIndex(currentIndex);
-    auto it=musicList.findMusicByMusicId(musicId);
-    QString musicName("未知歌曲");
-    QString musicSinger("歌手");
-
-    if(it!=musicList.end())
-    {
-        musicName=it->getMusicName();
-        musicSinger=it->getMusicSinger();
-    }
-    ui->musicName->setText(musicName);
-    ui->musicSinger->setText(musicSinger);
+    if (currentIndex < 0 || currentIndex >= currentQueue.size()
+            || currentQueue.at(currentIndex).source == MusicSource::Online)
+        return;
 
     //获取歌曲封面
     QVariant coverimage = player->metaData().value(QMediaMetaData::CoverArtImage);
@@ -602,7 +730,8 @@ void QQMusic::onMetaDataChanged()
     {
         QImage image=coverimage.value<QImage>();
         ui->musicCover->setPixmap(QPixmap::fromImage(image));
-        currentPage->setMusicImage(QPixmap::fromImage(image));
+        if (currentPage)
+            currentPage->setMusicImage(QPixmap::fromImage(image));
     }
     else
     {
@@ -610,37 +739,30 @@ void QQMusic::onMetaDataChanged()
         //设置默认图片
         QString path=":/images/rec/001.png";
         ui->musicCover->setPixmap(path);
-        currentPage->setMusicImage(path);
+        if (currentPage)
+            currentPage->setMusicImage(path);
     }
     ui->musicCover->setScaledContents(true);
-
-    //解析歌曲lrc歌词
-    if(it!=musicList.end())
-    {
-        //获取lrc文件路径
-        QString lrcPath=it->getLrcFilePath();
-        //解析lrc文件
-        lrcpage->parseLrcFile(lrcPath);
-    }
 
 }
 
 void QQMusic::playAt(int index)
 {
-    if (playList.isEmpty()) {
+    if (currentQueue.isEmpty()) {
         currentIndex = -1;
         return;
     }
 
-    currentIndex = qBound(0, index, playList.size() - 1);
-    player->setSource(playList.at(currentIndex));
+    currentIndex = qBound(0, index, currentQueue.size() - 1);
+    player->setSource(currentQueue.at(currentIndex).url);
     onCurrentIndexChanged(currentIndex);
+    updateCurrentTrackUi();
     player->play();
 }
 
 void QQMusic::playNext(bool previous)
 {
-    if (playList.isEmpty())
+    if (currentQueue.isEmpty())
         return;
 
     if (playbackMode == PlaybackMode::CurrentItemInLoop && !previous) {
@@ -650,13 +772,13 @@ void QQMusic::playNext(bool previous)
     }
 
     int nextIndex = currentIndex;
-    if (playbackMode == PlaybackMode::Random && playList.size() > 1) {
+    if (playbackMode == PlaybackMode::Random && currentQueue.size() > 1) {
         do {
-            nextIndex = QRandomGenerator::global()->bounded(playList.size());
+            nextIndex = QRandomGenerator::global()->bounded(currentQueue.size());
         } while (nextIndex == currentIndex);
     } else {
         const int step = previous ? -1 : 1;
-        nextIndex = (currentIndex + step + playList.size()) % playList.size();
+        nextIndex = (currentIndex + step + currentQueue.size()) % currentQueue.size();
     }
     playAt(nextIndex);
 }

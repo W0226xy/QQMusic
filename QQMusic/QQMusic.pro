@@ -1,4 +1,4 @@
-QT       += core gui multimedia sql
+QT       += core gui multimedia network sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -24,6 +24,7 @@ SOURCES += \
     music.cpp \
     musiclist.cpp \
     musicslider.cpp \
+    onlinemusicservice.cpp \
     qqmusic.cpp \
     recbox.cpp \
     recboxitem.cpp \
@@ -37,6 +38,8 @@ HEADERS += \
     music.h \
     musiclist.h \
     musicslider.h \
+    onlinemusicservice.h \
+    onlinetrack.h \
     qqmusic.h \
     recbox.h \
     recboxitem.h \

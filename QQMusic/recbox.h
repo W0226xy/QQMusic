@@ -1,8 +1,9 @@
 #ifndef RECBOX_H
 #define RECBOX_H
 
+#include "onlinetrack.h"
+
 #include <QWidget>
-#include<QJsonArray>
 namespace Ui {
 class RecBox;
 }
@@ -14,10 +15,11 @@ class RecBox : public QWidget
 public:
     explicit RecBox(QWidget *parent = nullptr);
     ~RecBox();
-    //初始化
-    void initRecBoxUi(QJsonArray data,int row);
+    void initRecBoxUi(int row);
+    void setTracks(const QList<OnlineTrack> &tracks);
 
-
+signals:
+    void playRequested(const OnlineTrack &track);
 private slots:
     void on_btDown_clicked();
 
@@ -30,7 +32,7 @@ private:
     Ui::RecBox *ui;
     int row;
     int col;
-    QJsonArray imageList;
+    QList<OnlineTrack> tracks;
     int currentIndex;//标记当前显示第几组图片
     int count;//标记图片总组数
 

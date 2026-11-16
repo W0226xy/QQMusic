@@ -7,7 +7,9 @@
 *****************************************************************************/
 
 #include "../../../qqmusic.h"
+#include <QtNetwork/QSslError>
 #include <QtCore/qmetatype.h>
+#include <QtCore/QList>
 
 #include <QtCore/qtmochelpers.h>
 
@@ -73,6 +75,13 @@ template <> constexpr inline auto QQMusic::qt_create_metaobjectdata<qt_meta_tag_
         "onMusicSliderChanged",
         "ration",
         "onMetaDataChanged",
+        "onOnlineTracksReady",
+        "QList<OnlineTrack>",
+        "tracks",
+        "onOnlineTrackRequested",
+        "OnlineTrack",
+        "track",
+        "refreshOnlineRecommendations",
         "onLrcWordClicked",
         "on_min_clicked",
         "on_max_clicked"
@@ -141,12 +150,22 @@ template <> constexpr inline auto QQMusic::qt_create_metaobjectdata<qt_meta_tag_
         }}),
         // Slot 'onMetaDataChanged'
         QtMocHelpers::SlotData<void()>(34, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onOnlineTracksReady'
+        QtMocHelpers::SlotData<void(const QList<OnlineTrack> &)>(35, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 36, 37 },
+        }}),
+        // Slot 'onOnlineTrackRequested'
+        QtMocHelpers::SlotData<void(const OnlineTrack &)>(38, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 39, 40 },
+        }}),
+        // Slot 'refreshOnlineRecommendations'
+        QtMocHelpers::SlotData<void()>(41, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onLrcWordClicked'
-        QtMocHelpers::SlotData<void()>(35, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(42, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'on_min_clicked'
-        QtMocHelpers::SlotData<void()>(36, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(43, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'on_max_clicked'
-        QtMocHelpers::SlotData<void()>(37, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(44, 2, QMC::AccessPrivate, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -190,9 +209,12 @@ void QQMusic::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
         case 17: _t->onPositionChanged((*reinterpret_cast<std::add_pointer_t<qint64>>(_a[1]))); break;
         case 18: _t->onMusicSliderChanged((*reinterpret_cast<std::add_pointer_t<float>>(_a[1]))); break;
         case 19: _t->onMetaDataChanged(); break;
-        case 20: _t->onLrcWordClicked(); break;
-        case 21: _t->on_min_clicked(); break;
-        case 22: _t->on_max_clicked(); break;
+        case 20: _t->onOnlineTracksReady((*reinterpret_cast<std::add_pointer_t<QList<OnlineTrack>>>(_a[1]))); break;
+        case 21: _t->onOnlineTrackRequested((*reinterpret_cast<std::add_pointer_t<OnlineTrack>>(_a[1]))); break;
+        case 22: _t->refreshOnlineRecommendations(); break;
+        case 23: _t->onLrcWordClicked(); break;
+        case 24: _t->on_min_clicked(); break;
+        case 25: _t->on_max_clicked(); break;
         default: ;
         }
     }
@@ -211,6 +233,20 @@ void QQMusic::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
             default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
             case 0:
                 *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType::fromType< CommonPage* >(); break;
+            }
+            break;
+        case 20:
+            switch (*reinterpret_cast<int*>(_a[1])) {
+            default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
+            case 0:
+                *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType::fromType< QList<OnlineTrack> >(); break;
+            }
+            break;
+        case 21:
+            switch (*reinterpret_cast<int*>(_a[1])) {
+            default: *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType(); break;
+            case 0:
+                *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType::fromType< OnlineTrack >(); break;
             }
             break;
         }
@@ -236,14 +272,14 @@ int QQMusic::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 23)
+        if (_id < 26)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 23;
+        _id -= 26;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 23)
+        if (_id < 26)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 23;
+        _id -= 26;
     }
     return _id;
 }

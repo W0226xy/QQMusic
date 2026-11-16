@@ -79,6 +79,19 @@
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="QLabel" name="recBoxItemArtist">
+     <property name="styleSheet">
+      <string notr="true">color: #888888;</string>
+     </property>
+     <property name="text">
+      <string>歌手</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>

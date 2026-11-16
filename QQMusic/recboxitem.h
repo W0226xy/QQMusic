@@ -1,6 +1,9 @@
 #ifndef RECBOXITEM_H
 #define RECBOXITEM_H
 
+#include "onlinetrack.h"
+
+#include <QNetworkAccessManager>
 #include <QWidget>
 
 namespace Ui {
@@ -16,15 +19,18 @@ public:
     ~RecBoxItem();
     bool eventFilter(QObject *watched, QEvent *event);
 
-    //设置推荐文本
-    void setRecText(const QString& text);
-    //设置图片
-    void setRecImage(const QString& imagePath);
+    void setTrack(const OnlineTrack &track);
 
+signals:
+    void playRequested(const OnlineTrack &track);
 
+protected:
+    void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
     Ui::RecBoxItem *ui;
+    OnlineTrack currentTrack;
+    QNetworkAccessManager coverManager;
 };
 
 #endif // RECBOXITEM_H

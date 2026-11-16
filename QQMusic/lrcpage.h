@@ -29,6 +29,7 @@ public:
     ~LrcPage();
 
     bool parseLrcFile(const QString& lrcFilePath);
+    void clearLyrics();
 
     void showLrcWordLine(qint64 time);
     int  getLrcWordLineIndex(qint64 time);

@@ -1,6 +1,7 @@
 #ifndef QQMUSIC_H
 #define QQMUSIC_H
 #include "volumetool.h"
+#include "onlinemusicservice.h"
 #include <QWidget>
 #include <QMouseEvent>
 #include"music.h"
@@ -11,6 +12,10 @@
 #include"lrcpage.h"
 #include<QPropertyAnimation>
 #include<QSqlDatabase>
+#include<QNetworkAccessManager>
+#include<QSet>
+class QLabel;
+class QPushButton;
 QT_BEGIN_NAMESPACE
 namespace Ui { class QQMusic; }
 QT_END_NAMESPACE
@@ -25,7 +30,6 @@ public:
     void initui();
     void initPlayer();
     void connectSignalAndSlots();
-    QJsonArray randomPiction();
     void initSqlite();
     void initMusicList();
 private slots:
@@ -68,6 +72,9 @@ private slots:
 
     void onMusicSliderChanged(float ration);//进度条改变，播放时间随之修改
     void onMetaDataChanged();//元数据改变
+    void onOnlineTracksReady(const QList<OnlineTrack> &tracks);
+    void onOnlineTrackRequested(const OnlineTrack &track);
+    void refreshOnlineRecommendations();
 
     void onLrcWordClicked();
     void on_min_clicked();
@@ -88,7 +95,17 @@ private:
 
     QMediaPlayer* player;
     QAudioOutput* audioOutput;
-    QList<QUrl> playList;
+    enum class MusicSource { Local, Online };
+    struct PlaybackItem {
+        MusicSource source = MusicSource::Local;
+        QString id;
+        QString name;
+        QString artist;
+        QUrl url;
+        QUrl coverUrl;
+        qint64 duration = 0;
+    };
+    QList<PlaybackItem> currentQueue;
     enum class PlaybackMode { Loop, Random, CurrentItemInLoop };
     PlaybackMode playbackMode;
     CommonPage* currentPage;//记录当前正在播放的commonPage页面
@@ -97,8 +114,17 @@ private:
     LrcPage* lrcpage;
     QPropertyAnimation* lrcpageAnimation;
     QSqlDatabase sqlite;
+    OnlineMusicService *onlineMusicService;
+    QList<OnlineTrack> onlineTracks;
+    QSet<QString> recentlyRecommendedIds;
+    QPushButton *refreshRecommendationsButton;
+    QLabel *recommendationStatusLabel;
+    QNetworkAccessManager coverManager;
+    quint64 coverRequestSerial = 0;
 
     void playAt(int index);
     void playNext(bool previous = false);
+    void updateCurrentTrackUi();
+    void loadCurrentCover(const QUrl &url);
 };
 #endif // QQMUSIC_H
