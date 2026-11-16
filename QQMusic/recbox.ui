@@ -2,6 +2,11 @@
 <ui version="4.0">
  <class>RecBox</class>
  <widget class="QWidget" name="RecBox">
+  <property name="styleSheet">
+   <string notr="true">#RecBox {
+    background-color: #FAFAFA;
+}</string>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>

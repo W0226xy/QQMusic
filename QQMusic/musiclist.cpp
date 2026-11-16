@@ -90,6 +90,8 @@ void MusicList::readFromDB()
         music.setMusicDuration(query.value(5).toLongLong());
         music.setIsLike(query.value(6).toBool());
         music.setIsHistory(query.value(7).toBool());
+        // 旧数据库可能保存了播放器错误解码的 ID3 中文标签，启动时一并修正。
+        music.repairCorruptedMetaData();
         musicList.push_back(music);
         //恢复musicPaths，防止相同目录下歌曲重复加载
         musicPaths.insert(music.getMusicUrl().toLocalFile());

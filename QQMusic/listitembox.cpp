@@ -20,13 +20,13 @@ ListItemBox::~ListItemBox()
 void ListItemBox::enterEvent(QEvent *event)
 {
     (void)event;
-    setStyleSheet("background-color:#EFEFEF");
+    setStyleSheet("background-color:#EFFAF6;");
 }
 
 void ListItemBox::leaveEvent(QEvent *event)
 {
     (void)event;
-    setStyleSheet("");
+    setStyleSheet("background-color:#FFFFFF;");
 
 }
 

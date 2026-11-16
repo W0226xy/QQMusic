@@ -109,30 +109,32 @@ void CommonPage::reFresh(MusicList &musicList)
     repaint();//立即重绘(立即响应paintEvent事件)
 }
 
-void CommonPage::addMusicToPlaylist(MusicList &musicList, QMediaPlaylist *playList)
+QList<QUrl> CommonPage::musicUrls(MusicList &musicList) const
 {
+    QList<QUrl> urls;
     for(auto music:musicList)
     {
         switch (pageType) {
         case LIKEE_PAGE:
             if(music.getIsLike())
             {
-                playList->addMedia(music.getMusicUrl());
+                urls.append(music.getMusicUrl());
             }
             break;
         case LOCAL_PAGE:
-            playList->addMedia(music.getMusicUrl());
+            urls.append(music.getMusicUrl());
             break;
         case HISTORY_PAGE:
             if(music.getIsHistory())
             {
-                playList->addMedia(music.getMusicUrl());
+                urls.append(music.getMusicUrl());
             }
             break;
         default:
             qDebug()<<"未支持页面";
         }
     }
+    return urls;
 }
 
 void CommonPage::setMusicImage(QPixmap pixmap)
@@ -143,9 +145,10 @@ void CommonPage::setMusicImage(QPixmap pixmap)
 
 QString CommonPage::getMusicIdByIndex(int index)
 {
-    if(index>musicOfPage.size())
+    if(index < 0 || index >= musicOfPage.size())
     {
         qDebug()<<"歌曲不存在";
+        return {};
     }
     return musicOfPage[index];
 }

@@ -2,7 +2,7 @@
 #define COMMONPAGE_H
 #include "musiclist.h"
 #include <QWidget>
-#include<QMediaPlaylist>
+#include <QList>
 namespace Ui {
 class CommonPage;
 }
@@ -28,8 +28,8 @@ public:
     void addMusicToMusicPage(MusicList& musicList);
     void reFresh(MusicList& musicList);
 
-    //将歌曲添加到播放列表中
-    void addMusicToPlaylist(MusicList& musicList,QMediaPlaylist* playList);
+    //返回当前页面中需要播放的歌曲 URL 列表。
+    QList<QUrl> musicUrls(MusicList& musicList) const;
 
     void setMusicImage(QPixmap pixmap);
 

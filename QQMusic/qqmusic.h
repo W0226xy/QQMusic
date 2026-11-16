@@ -6,7 +6,7 @@
 #include"music.h"
 #include"musiclist.h"
 #include<QMediaPlayer>
-#include<QMediaPlaylist>
+#include<QAudioOutput>
 #include"commonpage.h"
 #include"lrcpage.h"
 #include<QPropertyAnimation>
@@ -43,7 +43,6 @@ private slots:
     void onPlayMusic();
 
     void onPlayerStateChanged();//QMediaPlayer中stateChanged信号对应槽函数
-    void onPlaybackModeChanged(QMediaPlaylist::PlaybackMode playbackMode);
     void onCurrentIndexChanged(int index);//playlist中播放源发生改变，index表示正在播放的媒体索引
 
     //上一曲，下一曲
@@ -68,7 +67,7 @@ private slots:
     void onPositionChanged(qint64 position);//播放进度改变
 
     void onMusicSliderChanged(float ration);//进度条改变，播放时间随之修改
-    void onMetaDataAvailabelChanged(bool available);//元数据改变
+    void onMetaDataChanged();//元数据改变
 
     void onLrcWordClicked();
     void on_min_clicked();
@@ -88,12 +87,18 @@ private:
     MusicList musicList;
 
     QMediaPlayer* player;
-    QMediaPlaylist* playList;
+    QAudioOutput* audioOutput;
+    QList<QUrl> playList;
+    enum class PlaybackMode { Loop, Random, CurrentItemInLoop };
+    PlaybackMode playbackMode;
     CommonPage* currentPage;//记录当前正在播放的commonPage页面
     qint64 totalTime;//记录媒体源总时间
     int currentIndex;//记录当前正在播放歌曲在媒体列表中的索引
     LrcPage* lrcpage;
     QPropertyAnimation* lrcpageAnimation;
     QSqlDatabase sqlite;
+
+    void playAt(int index);
+    void playNext(bool previous = false);
 };
 #endif // QQMUSIC_H

@@ -60,6 +60,7 @@
        <string notr="true">#recMusicBtn
 {
 	border:none;
+	background: transparent;
 }</string>
       </property>
       <property name="text">

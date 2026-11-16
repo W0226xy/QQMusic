@@ -14,7 +14,7 @@ class BtForm : public QWidget
 public:
     explicit BtForm(QWidget *parent = nullptr);
     ~BtForm();
-
+    //设置btform的图标和文本
     void setIconAndText(const QString& btIcon,const QString& btText,int pageId);
 
     int getPageId()const;

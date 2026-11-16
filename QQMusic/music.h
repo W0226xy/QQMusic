@@ -47,6 +47,9 @@ public:
 
     QString getLrcFilePath() const;
 
+    // 修正损坏的标签编码；标签不可用时使用文件名作为可靠的后备信息。
+    void repairCorruptedMetaData();
+
     void InsertMusicToDB();//将歌曲属性写入数据库
 private:
     void parseMediaMetaMusic();

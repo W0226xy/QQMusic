@@ -1,11 +1,33 @@
 #include "music.h"
 #include<QUuid>
 #include<QMediaPlayer>
+#include<QMediaMetaData>
 #include<QDebug>
-#include<QCoreApplication>
+#include<QEventLoop>
+#include<QTimer>
 #include<QSqlQuery>
 #include<QSqlError>
 #include<QtDebug>
+#include<QFileInfo>
+
+namespace {
+bool hasBrokenText(const QString &text)
+{
+    return text.contains(QChar::ReplacementCharacter)
+            || text.contains(QStringLiteral("???"))
+            || text.contains(QChar(0x00C3))
+            || text.contains(QChar(0x00C2));
+}
+
+QString repairedUtf8Text(const QString &text)
+{
+    if (!hasBrokenText(text))
+        return text;
+
+    const QString candidate = QString::fromUtf8(text.toLatin1());
+    return hasBrokenText(candidate) ? text : candidate;
+}
+}
 Music::Music()
     :isLike(false)
     ,isHistory(false)
@@ -128,6 +150,34 @@ QString Music::getLrcFilePath() const
     return lrcPath;
 }
 
+void Music::repairCorruptedMetaData()
+{
+    musicName = repairedUtf8Text(musicName);
+    musicSinger = repairedUtf8Text(musicSinger);
+    musicAlbumn = repairedUtf8Text(musicAlbumn);
+
+    const QString baseName = QFileInfo(musicUrl.toLocalFile()).completeBaseName();
+    int separator = baseName.indexOf(QStringLiteral(" - "));
+    const int separatorLength = 3;
+    if (separator < 0) {
+        separator = baseName.lastIndexOf('-');
+    }
+    const int offset = baseName.mid(separator, separatorLength) == QStringLiteral(" - ")
+            ? separatorLength : 1;
+
+    if (musicName.isEmpty() || hasBrokenText(musicName)) {
+        musicName = separator >= 0 ? baseName.left(separator).trimmed() : baseName.trimmed();
+    }
+    if (musicSinger.isEmpty() || hasBrokenText(musicSinger)) {
+        musicSinger = separator >= 0
+                ? baseName.mid(separator + offset).trimmed()
+                : QStringLiteral("未知歌手");
+    }
+    if (musicAlbumn.isEmpty() || hasBrokenText(musicAlbumn)) {
+        musicAlbumn = QStringLiteral("未知专辑");
+    }
+}
+
 void Music::InsertMusicToDB()
 {
    //1.检测music是否在数据库中存在
@@ -182,60 +232,26 @@ void Music::parseMediaMetaMusic()
 {
     //1.创建媒体播放对象
     QMediaPlayer player;
-    //2.设置媒体源：依靠setMedia方法解析元数据
-    player.setMedia(musicUrl);
-    //3.因为setMedia不会等待音乐加载就立即返回
-    //所以，在通过mediaMeta方法获取元数据时，需要保证媒体已经添加完毕
-    //可以通过isMetaDataAvailable检查是否有效，返回true则说明加载完成
-    while(!player.isMetaDataAvailable())
-    {
-        QCoreApplication::processEvents();
-    }
-    //到这里说明加载完成，可以获取有效的元数据
-    if(player.isMetaDataAvailable())
-    {
-       musicName= player.metaData("Title").toString();
-       musicAlbumn=player.metaData("AlbumTitle").toString();
-       musicSinger=player.metaData("Author").toString();
-       duration=player.metaData("Duration").toLongLong();
-       QString fileName=musicUrl.fileName();
+    // Qt 6 使用 setSource()，元数据在媒体加载完成后才可读取。
+    QEventLoop eventLoop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    QObject::connect(&timeout, &QTimer::timeout, &eventLoop, &QEventLoop::quit);
+    QObject::connect(&player, &QMediaPlayer::mediaStatusChanged, &eventLoop,
+            [&eventLoop](QMediaPlayer::MediaStatus status) {
+        if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::InvalidMedia)
+            eventLoop.quit();
+    });
+    player.setSource(musicUrl);
+    timeout.start(3000);
+    eventLoop.exec();
 
-       //musicName为""的处理
-       //"2002年的第一场雪 - 刀郎.mp3"
-       //找-的位置
-       int index=fileName.indexOf('-');
-
-       if(musicName.isEmpty())
-       {
-           if(index!=-1)//-1表示没找到
-           {//"2002年的第一场雪 - 刀郎.mp3"
-               musicName=fileName.mid(0,index).trimmed();
-           }
-           else
-           {//"2002年的第一场雪刀郎.mp3"
-               musicName=fileName.mid(0,fileName.indexOf('.')).trimmed();
-           }
-       }
-       //作者为空
-       if(musicSinger.isEmpty())
-       {
-           if(index!=-1)
-           {
-               musicSinger=fileName.mid(index+1,fileName.indexOf('.')-index-1).trimmed();
-           }
-           else
-           {
-               musicSinger="未知歌手";
-           }
-       }
-
-       //专辑名为空
-       if(musicAlbumn.isEmpty())
-       {
-           musicAlbumn="未知专辑";
-       }
-
-       qDebug()<<fileName<<":"<<musicName<<":"<<musicSinger<<":"<<musicAlbumn<<":"<<duration;
-    }
-
+    const QMediaMetaData metaData = player.metaData();
+    musicName = metaData.value(QMediaMetaData::Title).toString();
+    musicAlbumn = metaData.value(QMediaMetaData::AlbumTitle).toString();
+    musicSinger = metaData.value(QMediaMetaData::Author).toString();
+    duration = metaData.value(QMediaMetaData::Duration).toLongLong();
+    repairCorruptedMetaData();
+    qDebug() << musicUrl.fileName() << ":" << musicName << ":"
+             << musicSinger << ":" << musicAlbumn << ":" << duration;
 }

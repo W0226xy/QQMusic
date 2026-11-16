@@ -13,7 +13,7 @@ VolumeTool::VolumeTool(QWidget *parent) :
     setAttribute(Qt::WA_TranslucentBackground);
     //窗口增加阴影效果
     QGraphicsDropShadowEffect *shadowEffect =new QGraphicsDropShadowEffect(this);
-    shadowEffect->setColor('#646464');
+    shadowEffect->setColor(QColor("#646464"));
     shadowEffect->setBlurRadius(10);
     shadowEffect->setOffset(0,0);
     setGraphicsEffect(shadowEffect);

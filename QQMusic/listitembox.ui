@@ -2,6 +2,16 @@
 <ui version="4.0">
  <class>ListItemBox</class>
  <widget class="QWidget" name="ListItemBox">
+  <property name="styleSheet">
+   <string notr="true">#ListItemBox, #musicNameBox, #musicSingerBox, #musicAlbumBox {
+    background-color: #FFFFFF;
+    color: #202020;
+}
+
+#musicNameLabel, #musicSingerLabel, #musicAlbumLabel {
+    color: #202020;
+}</string>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>

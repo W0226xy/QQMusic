@@ -10,6 +10,10 @@
 #include<QSqlDatabase>
 #include<QMessageBox>
 #include<QSqlQuery>
+#include<QMediaMetaData>
+#include<QRandomGenerator>
+#include<algorithm>
+#include<random>
 QQMusic::QQMusic(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::QQMusic)
@@ -30,6 +34,7 @@ QQMusic::~QQMusic()
 
 void QQMusic::initui()
 {
+    //设置窗口无标题栏
     this->setWindowFlag(Qt::FramelessWindowHint);
     //设置窗口背景透明
     setAttribute(Qt::WA_TranslucentBackground);
@@ -50,7 +55,8 @@ void QQMusic::initui()
     ui->local->setIconAndText(":/images/local.png","本地下载",4);
     ui->recent->setIconAndText(":/images/recent.png","最近播放",5);
 
-    //本地下载BtForm动画默认显示
+    //本地下载BtForm动画默认显示，ps：原先所有的btform都有动画，但是在btform.cpp中隐藏了（ui->lineBox->hide();
+    //只显示本地下载的btform的动画效果
     ui->local->showAnimal();
     //将localPage设置为当前页面
     ui->stackedWidget->setCurrentIndex(4);
@@ -92,25 +98,24 @@ void QQMusic::initPlayer()
 {
     //1.初始化媒体播放类
     player=new QMediaPlayer(this);
-    playList=new QMediaPlaylist(this);
+    audioOutput = new QAudioOutput(this);
+    player->setAudioOutput(audioOutput);
+    playbackMode = PlaybackMode::Random;
 
     //2.设置默认播放模式
-    playList->setPlaybackMode(QMediaPlaylist::Random);
+    // Qt 6 不再提供 QMediaPlaylist，因此由 QQMusic 保存播放顺序。
 
-    //3.将播放列表设置到播放媒体对象中
-    player->setPlaylist(playList);
-
-    //4.设置默认音量大小,默认设置20%
-    player->setVolume(20);
+    //3.设置默认音量大小,默认设置20%
+    audioOutput->setVolume(0.2f);
 
     //关联QMediaPlayer的信号
-    connect(player,&QMediaPlayer::stateChanged,this,&QQMusic::onPlayerStateChanged);
-
-    //关联播放列表模式改变的信号槽关联
-    connect(playList,&QMediaPlaylist::playbackModeChanged,this,&QQMusic::onPlaybackModeChanged);
-
-    //当playlist中播放源发生改变时
-    connect(playList,&QMediaPlaylist::currentIndexChanged,this,&QQMusic::onCurrentIndexChanged);
+    connect(player, &QMediaPlayer::playbackStateChanged, this,
+            &QQMusic::onPlayerStateChanged);
+    connect(player, &QMediaPlayer::mediaStatusChanged, this,
+            [this](QMediaPlayer::MediaStatus status) {
+        if (status == QMediaPlayer::EndOfMedia)
+            playNext();
+    });
 
     //关联QMediaPlayer::durationChanged信号
     connect(player,&QMediaPlayer::durationChanged,this,&QQMusic::onDurationChanged);
@@ -118,15 +123,16 @@ void QQMusic::initPlayer()
     //关联QMediaPlayer::positionChanged信号
     connect(player,&QMediaPlayer::positionChanged,this,&QQMusic::onPositionChanged);
 
-    //关联QMediaPlayer::onMetaDataAvailableChanged
-    connect(player,&QMediaPlayer::metaDataAvailableChanged,this,&QQMusic::onMetaDataAvailabelChanged);
+    connect(player, &QMediaPlayer::metaDataChanged, this,
+            &QQMusic::onMetaDataChanged);
 }
 
 void QQMusic::connectSignalAndSlots()
 {
     //关联BtForm的信号和处理该信号的槽函数
     //槽函数：专门用来接收信号（signal）并执行相应处理代码的函数
-    connect(ui->rec,&BtForm::btClick,this,&QQMusic::onBtFormClick);
+    //用户点击了btform，切换页面
+    connect(ui->rec,&BtForm::btClick,this,&QQMusic::onBtFormClick);//参数1：谁发射信号 参数2：发射了什么信号 参数3：谁处理 参数4：处理的槽函数
     connect(ui->radio,&BtForm::btClick,this,&QQMusic::onBtFormClick);
     connect(ui->music,&BtForm::btClick,this,&QQMusic::onBtFormClick);
     connect(ui->like,&BtForm::btClick,this,&QQMusic::onBtFormClick);
@@ -175,7 +181,8 @@ QJsonArray QQMusic::randomPiction()
               <<"018.png"<<"019.png"<<"020.png"<<"021.png"<<"022.png"<<"023.png"<<"024.png"<<"025.png"
               <<"026.png"<<"027.png"<<"028.png"<<"029.png"<<"030.png"<<"031.png"<<"032.png"<<"033.png"
                 <<"034.png"<<"035.png"<<"036.png"<<"037.png"<<"038.png"<<"039.png"<<"040.png";
-    std::random_shuffle(vecImageName.begin(),vecImageName.end());
+    std::mt19937 generator(std::random_device{}());
+    std::shuffle(vecImageName.begin(), vecImageName.end(), generator);
 
     //path:"/images/rec/"+vecImageName[i];
     //text:推荐-001
@@ -254,6 +261,7 @@ void QQMusic::on_quit_clicked()
 void QQMusic::onBtFormClick(int pageId)
 {
     //清除之前btForm按钮的背景颜色
+    //获取所有btform按钮
     QList<BtForm*> btFormList=this->findChildren<BtForm*>();
     for(auto btForm:btFormList)
     {
@@ -262,7 +270,7 @@ void QQMusic::onBtFormClick(int pageId)
             btForm->cleanBackground();
         }
     }
-    ui->stackedWidget->setCurrentIndex((pageId));
+    ui->stackedWidget->setCurrentIndex((pageId));//层叠窗口切换对应页面
     qDebug()<<"切换页面"<<pageId;
 }
 
@@ -270,7 +278,7 @@ void QQMusic::mouseMoveEvent(QMouseEvent *event)
 {
     if(Qt::LeftButton==event->buttons())//如果当前移动过程中左键还处于按下状态，就移动窗口。buttons()，表示当前所有正在按下的按键状态
     {
-        move(event->globalPos()-dragPosition);//移动窗口
+        move(event->globalPosition().toPoint()-dragPosition);//移动窗口
         qDebug()<<"move";
         return;
     }
@@ -284,7 +292,7 @@ void QQMusic::mousePressEvent(QMouseEvent *event)
     if(Qt::LeftButton==event->button())//如果这次按下的是左键，就执行下面的拖动准备工作。button()，表示是哪个键
     {
         //获取鼠标相对于屏幕左上角的全局坐标
-        dragPosition=event->globalPos()-geometry().topLeft();//鼠标点击点相对于窗口左上角的偏移量
+        dragPosition=event->globalPosition().toPoint()-geometry().topLeft();//鼠标点击点相对于窗口左上角的偏移量
         //geometry().topLeft()当前窗口左上角在屏幕上的坐标
         return;
     }
@@ -351,7 +359,7 @@ void QQMusic::on_addLocal_clicked()
         ui->localPage->reFresh(musicList);
 
         //localPage中的歌曲添加到媒体播放列表中
-        ui->localPage->addMusicToPlaylist(musicList,playList);
+        playList = ui->localPage->musicUrls(musicList);
     }
 
 }
@@ -375,22 +383,36 @@ void QQMusic::UpdateLikeMusicAndPage(bool isLike, const QString &musicId)
 //播放暂停
 void QQMusic::onPlayMusic()
 {
-    if(QMediaPlayer::PlayingState==player->state())
+    if(QMediaPlayer::PlayingState==player->playbackState())
     {
         //播放中点击，暂停播放
         player->pause();
 
     }
-    else if(QMediaPlayer::PausedState==player->state())
+    else if(QMediaPlayer::PausedState==player->playbackState())
     {
         //暂停状态中点击按钮，则继续播放
         player->play();
 
     }
-    else if(QMediaPlayer::StoppedState==player->state())
+    else if(QMediaPlayer::StoppedState==player->playbackState())
     {
-        //刚开始没播放的时候，点击播放按钮进行播放
-        player->play();
+        //启动后从数据库恢复的歌曲尚未写入运行时播放列表时，
+        //直接点击底部播放键也应能播放，而不是对空媒体源调用 play()。
+        if (playList.isEmpty()) {
+            playList = currentPage->musicUrls(musicList);
+            if (playList.isEmpty()) {
+                currentPage = ui->localPage;
+                playList = currentPage->musicUrls(musicList);
+            }
+        }
+
+        if (!playList.isEmpty()) {
+            if (currentIndex < 0 || currentIndex >= playList.size())
+                playAt(0);
+            else
+                player->play();
+        }
 
     }
     else
@@ -401,7 +423,7 @@ void QQMusic::onPlayMusic()
 
 void QQMusic::onPlayerStateChanged()
 {
-    if(player->state()==QMediaPlayer::PlayingState)
+    if(player->playbackState()==QMediaPlayer::PlayingState)
     {
         ui->play->setIcon((QIcon(":/images/play_on.png")));
     }
@@ -413,57 +435,50 @@ void QQMusic::onPlayerStateChanged()
 
 void QQMusic::onPlayDownClicked()
 {
-    playList->previous();
+    playNext(true);
 }
 
 void QQMusic::onPlayUpClicked()
 {
-    playList->next();
+    playNext();
 }
 
 void QQMusic::onPlaybackModelClicked()
 {
-    switch (playList->playbackMode()) {
-        case QMediaPlaylist::Loop:               // 列表循环
-            playList->setPlaybackMode(QMediaPlaylist::Random);
+    switch (playbackMode) {
+        case PlaybackMode::Loop:
+            playbackMode = PlaybackMode::Random;
             ui->playMode->setToolTip("随机播放");
             break;
-        case QMediaPlaylist::Random:             // 随机播放
-            playList->setPlaybackMode(QMediaPlaylist::CurrentItemInLoop);
+        case PlaybackMode::Random:
+            playbackMode = PlaybackMode::CurrentItemInLoop;
             ui->playMode->setToolTip("单曲循环");
             break;
-        case QMediaPlaylist::CurrentItemInLoop: // 单曲循环
-            playList->setPlaybackMode(QMediaPlaylist::Loop);
+        case PlaybackMode::CurrentItemInLoop:
+            playbackMode = PlaybackMode::Loop;
             ui->playMode->setToolTip("列表循环");
             break;
-        default:
-            qDebug() << "暂不支持";
-            break;
     }
-}
 
-void QQMusic::onPlaybackModeChanged(QMediaPlaylist::PlaybackMode playbackMode)
-{
-    if(playbackMode==QMediaPlaylist::Loop)
+    if(playbackMode == PlaybackMode::Loop)
     {
         ui->playMode->setIcon(QIcon(":/images/list_play.png"));
     }
-    else if(playbackMode == QMediaPlaylist::Random)
+    else if(playbackMode == PlaybackMode::Random)
     {
         ui->playMode->setIcon(QIcon(":/images/shuffle_2.png"));
     }
-    else if(playbackMode==QMediaPlaylist::CurrentItemInLoop)
-    {
-        ui->playMode->setIcon(QIcon(":/images/single_play.png"));
-    }
     else
     {
-        qDebug()<<"暂不支持该模式";
+        ui->playMode->setIcon(QIcon(":/images/single_play.png"));
     }
 }
 
 void QQMusic::onCurrentIndexChanged(int index)
 {
+    if (index < 0 || index >= playList.size() || currentPage == nullptr)
+        return;
+
     currentIndex=index;
     //由于CommonPage页面中的歌曲和正在播放的播放列表中的歌曲索引相同
     //知道歌曲在playlist中的索引后，到CommonPage中获取
@@ -506,16 +521,8 @@ void QQMusic::onPlayAll(PageType pageType)
 void QQMusic::playAllMusicOfCommonPage(CommonPage *page, int index)
 {
     currentPage=page;
-    //清空之前playList中的歌曲
-    playList->clear();
-
-    //添加当前要播放的page页面中所有歌曲
-    page->addMusicToPlaylist(musicList,playList);
-
-    //从第1首开始播放
-    playList->setCurrentIndex(index);
-
-    player->play();
+    playList = page->musicUrls(musicList);
+    playAt(index);
 
 }
 
@@ -526,12 +533,12 @@ void QQMusic::playMusicByIndex(CommonPage *page, int index)
 
 void QQMusic::setPlayerMuted(bool isMuted)
 {
-    player->setMuted(isMuted);
+    audioOutput->setMuted(isMuted);
 }
 
 void QQMusic::setPlayerVolume(int volume)
 {
-    player->setVolume(volume);
+    audioOutput->setVolume(volume / 100.0f);
 }
 
 void QQMusic::onDurationChanged(qint64 duration)
@@ -572,7 +579,7 @@ void QQMusic::onMusicSliderChanged(float ration)
     player->setPosition(duration);
 }
 
-void QQMusic::onMetaDataAvailabelChanged(bool available)
+void QQMusic::onMetaDataChanged()
 {
     //歌曲名称、歌曲作者直接到Music对象中获取
     //此时需要知道媒体源在播放列表中的索引
@@ -590,7 +597,7 @@ void QQMusic::onMetaDataAvailabelChanged(bool available)
     ui->musicSinger->setText(musicSinger);
 
     //获取歌曲封面
-    QVariant coverimage= player->metaData("ThumbnailImage");
+    QVariant coverimage = player->metaData().value(QMediaMetaData::CoverArtImage);
     if(coverimage.isValid())
     {
         QImage image=coverimage.value<QImage>();
@@ -616,6 +623,42 @@ void QQMusic::onMetaDataAvailabelChanged(bool available)
         lrcpage->parseLrcFile(lrcPath);
     }
 
+}
+
+void QQMusic::playAt(int index)
+{
+    if (playList.isEmpty()) {
+        currentIndex = -1;
+        return;
+    }
+
+    currentIndex = qBound(0, index, playList.size() - 1);
+    player->setSource(playList.at(currentIndex));
+    onCurrentIndexChanged(currentIndex);
+    player->play();
+}
+
+void QQMusic::playNext(bool previous)
+{
+    if (playList.isEmpty())
+        return;
+
+    if (playbackMode == PlaybackMode::CurrentItemInLoop && !previous) {
+        player->setPosition(0);
+        player->play();
+        return;
+    }
+
+    int nextIndex = currentIndex;
+    if (playbackMode == PlaybackMode::Random && playList.size() > 1) {
+        do {
+            nextIndex = QRandomGenerator::global()->bounded(playList.size());
+        } while (nextIndex == currentIndex);
+    } else {
+        const int step = previous ? -1 : 1;
+        nextIndex = (currentIndex + step + playList.size()) % playList.size();
+    }
+    playAt(nextIndex);
 }
 
 void QQMusic::onLrcWordClicked()

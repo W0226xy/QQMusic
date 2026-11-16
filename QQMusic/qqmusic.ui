@@ -23,7 +23,27 @@
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true"/>
+    <string notr="true">#background {
+    background-color: #FAFAFA;
+    color: #202020;
+}
+
+#headLeft, #bodyLeft {
+    background-color: #F3F3F3;
+}
+
+#headRight, #bodyRight, #controlBox, QStackedWidget, CommonPage {
+    background-color: #FAFAFA;
+}
+
+QLabel {
+    color: #202020;
+}
+
+QPushButton {
+    color: #202020;
+}
+</string>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <property name="spacing">
@@ -91,7 +111,7 @@
          <property name="styleSheet">
           <string notr="true">#headLeft
 {
- background-color:#F0F0F0;/*设置背景颜⾊为浅灰⾊*/
+ background-color:#F3F3F3;/*设置背景颜⾊为浅灰⾊*/
 }</string>
          </property>
          <widget class="QLabel" name="logo">
@@ -124,7 +144,7 @@
          <property name="styleSheet">
           <string notr="true">#headRight
 {
- background-color:#F5F5F5; /*设置背景颜⾊为亮灰⾊*/
+ background-color:#FAFAFA; /*设置背景颜⾊为亮灰⾊*/
 }</string>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -193,7 +213,7 @@
                <property name="styleSheet">
                 <string notr="true">#lineEdit
 {
- background-color: #E3E3E3; /*设置背景颜⾊*/
+ background-color: #EAEAEA; /*设置背景颜⾊*/
 border:none;
  border-radius: 17px; /*设置四个⻆的圆⻆*/
  padding-left: 17px; /*内部⽂字到边的距离*/
@@ -229,7 +249,7 @@ QPushButton:hover
              <item>
               <spacer name="horizontalSpacer">
                <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+                <enum>Qt::Orientation::Horizontal</enum>
                </property>
                <property name="sizeHint" stdset="0">
                 <size>
@@ -358,7 +378,7 @@ QPushButton:hover
          <property name="styleSheet">
           <string notr="true">#bodyLeft
 {
- background-color:#F0F0F0;/*设置背景颜⾊为浅灰⾊*/
+ background-color:#F3F3F3;/*设置背景颜⾊为浅灰⾊*/
 }</string>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -490,7 +510,7 @@ QPushButton:hover
           <item>
            <spacer name="verticalSpacer">
             <property name="orientation">
-             <enum>Qt::Vertical</enum>
+             <enum>Qt::Orientation::Vertical</enum>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
@@ -508,7 +528,7 @@ QPushButton:hover
          <property name="styleSheet">
           <string notr="true">#bodyRight
 {
- background-color:#F5F5F5; /*设置背景颜⾊为亮灰⾊*/
+ background-color:#FAFAFA; /*设置背景颜⾊为亮灰⾊*/
 }</string>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -545,6 +565,9 @@ QPushButton:hover
              <number>0</number>
             </property>
             <widget class="QWidget" name="recPage">
+             <property name="styleSheet">
+              <string notr="true">background-color: #FAFAFA;</string>
+             </property>
              <layout class="QVBoxLayout" name="verticalLayout_8">
               <item>
                <widget class="QScrollArea" name="scrollArea">
@@ -554,6 +577,12 @@ QPushButton:hover
                   <height>0</height>
                  </size>
                 </property>
+                <property name="styleSheet">
+                 <string notr="true">#scrollArea {
+    background-color: #FAFAFA;
+    border: none;
+}</string>
+                </property>
                 <property name="widgetResizable">
                  <bool>true</bool>
                 </property>
@@ -562,8 +591,8 @@ QPushButton:hover
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>872</width>
-                   <height>632</height>
+                   <width>874</width>
+                   <height>634</height>
                   </rect>
                  </property>
                  <property name="minimumSize">
@@ -571,6 +600,9 @@ QPushButton:hover
                    <width>820</width>
                    <height>500</height>
                   </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">background-color: #FAFAFA;</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_7">
                   <item>
