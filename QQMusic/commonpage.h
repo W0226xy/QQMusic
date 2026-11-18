@@ -24,6 +24,7 @@ public:
     ~CommonPage();
 
     void setMusicListType(PageType pageType);
+    //设置当前界面上方图片（主要涉及三个页面：我喜欢、本地音乐、最近播放）
     void setCommonPageUi(const QString& text,const QString& image);
     void addMusicToMusicPage(MusicList& musicList);
     void reFresh(MusicList& musicList);

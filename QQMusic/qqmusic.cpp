@@ -97,7 +97,11 @@ void QQMusic::initui()
     //播放控制区按钮图标设置
     ui->play->setIcon(QIcon(":images/play_2.png"));
     ui->playMode->setIcon(QIcon(":/images/shuffle_2.png"));
-    volumeTool =new VolumeTool(this);
+
+    //在堆上创建一个 VolumeTool 对象；把当前对象 this 设为它的父对象。
+    //Qt 的 QObject 有“对象树”机制。父对象销毁时，会自动销毁它的所有子对象。因此当 QQMusic 窗口关闭、对象被销毁时，`volumeTool` 也会自动释放。
+    volumeTool =new VolumeTool(this);//volumeTool挂到对象树上
+
 
     //实例化LrcWord对象
     lrcpage=new LrcPage(this);
@@ -321,15 +325,16 @@ void QQMusic::mousePressEvent(QMouseEvent *event)
 
 }
 
-
+//音量控件点击后，可以显示拖拽音量的框
 void QQMusic::on_volume_clicked()
 {
+    //点击volume之后要把volumeTool显示在volume上方
     //1.获取ui->volume控件左上角的坐标，转换为基于屏幕的全局坐标
+
+    // mapToGlobal(QPoint(0, 0))，把控件内部左上角(0,0)的坐标，转换成相对屏幕的坐标
     QPoint point=ui->volume->mapToGlobal(QPoint(0,0));
+    //根据volume坐标，获取volumeTool左上角坐标
     QPoint volumeLeftTop=point- QPoint( volumeTool->width()/2,volumeTool->height());
-
-
-
     volumeLeftTop.setX(volumeLeftTop.x()+15);
     volumeLeftTop.setY(volumeLeftTop.y()+30);
 
@@ -339,6 +344,7 @@ void QQMusic::on_volume_clicked()
     volumeTool->show();
 }
 
+//点击右下角"+"按钮，添加本地歌曲
 void QQMusic::on_addLocal_clicked()
 {
     QFileDialog fileDialog(this);//创建文件对话框
@@ -360,8 +366,9 @@ void QQMusic::on_addLocal_clicked()
     fileDialog.setFileMode(QFileDialog::ExistingFiles);
 
     //通过文件的MIME类型进行过滤
+    //MIME类型是一种互联网标准，用于标识文档、文件、字节流的性质和格式
     QStringList mimeTypeFilters;
-    mimeTypeFilters<<"application/octet-stream";
+    mimeTypeFilters<<"application/octet-stream";//这里application/octet-stream表示显示所有格式文件，通用的二进制数据流的MIME类型
     fileDialog.setMimeTypeFilters(mimeTypeFilters);
 
     if(QDialog::Accepted==fileDialog.exec())//fileDialog.exec();//打开窗口
@@ -549,25 +556,30 @@ void QQMusic::playAllMusicOfCommonPage(CommonPage *page, int index)
 
 }
 
+
 void QQMusic::playMusicByIndex(CommonPage *page, int index)
 {
     playAllMusicOfCommonPage(page,index);
 }
 
+//刷新在线推荐
 void QQMusic::refreshOnlineRecommendations()
 {
+    //如果在线音乐服务正在请求歌曲，就直接返回
     if (onlineMusicService->isLoading())
         return;
     // 多取一些候选，以便刷新时优先避开最近展示过的歌曲。
-    onlineMusicService->fetchTracks(36);
+    onlineMusicService->fetchTracks(36);//請求36首歌曲（界面只展示12首），防止有些歌曲信息不足，返回的時候被筛选掉
 }
 
+//收到在线歌曲后：筛选、去重、显示
 void QQMusic::onOnlineTracksReady(const QList<OnlineTrack> &tracks)
 {
-    QList<OnlineTrack> selected;
-    QSet<QString> selectedIds;
+    QList<OnlineTrack> selected;//本轮最终要展示的歌曲列表；
+    QSet<QString> selectedIds;//记录本轮已选歌曲 ID，用于避免同一批结果出现重复歌曲。
     for (const OnlineTrack &track : tracks) {
-        if (!recentlyRecommendedIds.contains(track.id) && !selectedIds.contains(track.id)) {
+        //第一轮筛选：避开最近推荐过的歌
+        if (!recentlyRecommendedIds.contains(track.id) && !selectedIds.contains(track.id)) {//最近没选过，本轮选中的没有（防止重复）
             selected.append(track);
             selectedIds.insert(track.id);
             if (selected.size() == 12)
@@ -578,6 +590,8 @@ void QQMusic::onOnlineTracksReady(const QList<OnlineTrack> &tracks)
     for (const OnlineTrack &track : tracks) {
         if (selected.size() == 12)
             break;
+        //如果第一轮没有凑够 12 首，就再次遍历候选歌曲。
+        //这次不再检查：!recentlyRecommendedIds.contains(track.id) ，也就是允许出现之前推荐过的歌曲
         if (!selectedIds.contains(track.id)) {
             selected.append(track);
             selectedIds.insert(track.id);
@@ -589,25 +603,34 @@ void QQMusic::onOnlineTracksReady(const QList<OnlineTrack> &tracks)
         return;
     }
 
+    //保存当前展示的在线歌曲
     onlineTracks = selected;
+    //最近推荐记录超过 120 首后，直接清空。
     if (recentlyRecommendedIds.size() > 120)
         recentlyRecommendedIds.clear();
+    //将 12 首歌分到两个推荐区域
     for (const OnlineTrack &track : onlineTracks)
         recentlyRecommendedIds.insert(track.id);
-
-    ui->recMusicBox->setTracks(onlineTracks.mid(0, 4));
-    ui->supplyMusicBox->setTracks(onlineTracks.mid(4, 8));
+    //12首歌分到两个推荐位置：今日为你推荐、你的音乐补给
+    ui->recMusicBox->setTracks(onlineTracks.mid(0, 4));//从0开始取，取4首
+    ui->supplyMusicBox->setTracks(onlineTracks.mid(4, 8));//4开始取，取8首
     recommendationStatusLabel->setText(onlineTracks.size() >= 12
             ? QStringLiteral("已加载 12 首 Jamendo 在线歌曲")
             : QStringLiteral("Jamendo 本次仅返回 %1 首可播放歌曲").arg(onlineTracks.size()));
 }
 
-void QQMusic::onOnlineTrackRequested(const OnlineTrack &track)
+//用户点击1首在线音乐的播放逻辑
+void QQMusic::onOnlineTrackRequested(const OnlineTrack &track)//这里的track是刚刚点击的那首歌
 {
+    //清空当前播放队列
     currentQueue.clear();
     currentPage = nullptr;
+    //记录用户点的那首歌在新播放队列里的下标，初始为 -1
     int requestedIndex = -1;
+    //将当前在线推荐全部转成播放队列
+    //遍历当前推荐的全部在线歌曲，将其转换为播放器统一使用的 PlaybackItem。
     for (const OnlineTrack &onlineTrack : onlineTracks) {
+        //标记来源是网络歌曲。后面更新歌词、封面等逻辑会通过这个字段区分在线与本地音乐
         PlaybackItem item;
         item.source = MusicSource::Online;
         item.id = onlineTrack.id;
@@ -616,32 +639,41 @@ void QQMusic::onOnlineTrackRequested(const OnlineTrack &track)
         item.url = onlineTrack.audioUrl;
         item.coverUrl = onlineTrack.coverUrl;
         item.duration = onlineTrack.duration;
+        //将在线歌曲数据复制到播放项中。若遍历到用户点击的歌，就记住它即将插入队列的位置。
+        //这样虽然用户只点击了1首在线歌曲，但是会把12首推荐歌都加入播放列表，这样可以实现“上一首”“下一首”等逻辑
         if (onlineTrack.id == track.id)
             requestedIndex = currentQueue.size();
         currentQueue.append(item);
     }
+    //如果找到了用户点击的歌曲，就播放它。
     if (requestedIndex >= 0)
         playAt(requestedIndex);
 }
 
+//更新当前播放歌曲的界面
 void QQMusic::updateCurrentTrackUi()
 {
+    //先判断当前播放下标是否合法
     if (currentIndex < 0 || currentIndex >= currentQueue.size())
         return;
-
+    //取得当前播放项。更新歌曲名和歌手名。如果数据为空，则显示默认文字
     const PlaybackItem &item = currentQueue.at(currentIndex);
     ui->musicName->setText(item.name.isEmpty() ? QStringLiteral("未知歌曲") : item.name);
     ui->musicSinger->setText(item.artist.isEmpty() ? QStringLiteral("未知歌手") : item.artist);
+    //先放一张本地默认封面图。因为网络封面需要异步下载，下载过程中若不放默认图，界面可能显示上一首歌的旧封面，造成视觉误导。
     ui->musicCover->setPixmap(QPixmap(QStringLiteral(":/images/rec/001.png")));
     ui->musicCover->setScaledContents(true);
-    ++coverRequestSerial; // 使上一首歌尚未完成的封面请求失效。
+    ++coverRequestSerial; // 封面请求版本号加一，使上一首歌尚未完成的封面请求失效。
+    //比如A歌曲封面正在加载，用户就刷新了歌曲
+    //这是典型的“异步请求过期保护”。
 
+    //下载网络封面
     if (item.source == MusicSource::Online) {
         lrcpage->clearLyrics();
         loadCurrentCover(item.coverUrl);
         return;
     }
-
+    //本地歌曲，根据歌曲 ID 在本地曲库中查找歌词。
     auto it = musicList.findMusicByMusicId(item.id);
     if (it != musicList.end())
         lrcpage->parseLrcFile(it->getLrcFilePath());
@@ -649,21 +681,29 @@ void QQMusic::updateCurrentTrackUi()
         lrcpage->clearLyrics();
 }
 
+//异步下载在线歌曲封面
 void QQMusic::loadCurrentCover(const QUrl &url)
 {
+    //封面地址不合法就不请求，保持默认封面。
     if (!url.isValid())
         return;
 
+    //保存“本次封面请求”的序号，后续用于判断它是否已经过期。
     const quint64 serial = coverRequestSerial;
+    //创建封面下载请求，并设置 10 秒超时。
     QNetworkRequest request(url);
     request.setTransferTimeout(10000);
+    //通过专门的 coverManager 下载图片。
     QNetworkReply *reply = coverManager.get(request);
+    //封面下载完执行回调
     connect(reply, &QNetworkReply::finished, this, [this, reply, serial]() {
+        //读取图片数据，记录是否成功，然后让 Qt 稍后释放响应对象。
         const QByteArray data = reply->readAll();
         const bool succeeded = reply->error() == QNetworkReply::NoError;
         reply->deleteLater();
-        if (!succeeded || serial != coverRequestSerial)
+        if (!succeeded || serial != coverRequestSerial)//请求下载失败，请求已过期，不更新封面
             return;
+        //更新封面
         QPixmap pixmap;
         if (pixmap.loadFromData(data))
             ui->musicCover->setPixmap(pixmap);

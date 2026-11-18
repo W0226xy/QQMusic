@@ -9,20 +9,27 @@ VolumeTool::VolumeTool(QWidget *parent) :
     volumeRatio(20)
 {
     ui->setupUi(this);
-    setWindowFlags(Qt::Popup |Qt::FramelessWindowHint|Qt::NoDropShadowWindowHint);//点击按钮后显示音量ui
+    //设置这个窗口的显示风格。`|` 表示把多个标志组合使用。
+    //Qt::Popup：把窗口设为弹出式窗口。
+    //Qt::FramelessWindowHint：去掉系统标题栏和边框
+    //Qt::NoDropShadowWindowHint：告诉系统不要为整个顶层窗口绘制系统自带阴影。
+    setWindowFlags(Qt::Popup |Qt::FramelessWindowHint|Qt::NoDropShadowWindowHint);
+    //让整个弹窗的背景支持透明。
     setAttribute(Qt::WA_TranslucentBackground);
-    //窗口增加阴影效果
-    QGraphicsDropShadowEffect *shadowEffect =new QGraphicsDropShadowEffect(this);
+    //给内部内容增加阴影，避免阴影的扩展区域越出透明顶层窗口
+    //这里阴影加给的是内部的 volumeWidget，而不是整个 VolumeTool 顶层弹窗。
+    // 这样可以避免阴影超出透明顶层窗口的可绘制范围
+    QGraphicsDropShadowEffect *shadowEffect =new QGraphicsDropShadowEffect(ui->volumeWidget);
     shadowEffect->setColor(QColor("#646464"));
     shadowEffect->setBlurRadius(10);
     shadowEffect->setOffset(0,0);
-    setGraphicsEffect(shadowEffect);
+    ui->volumeWidget->setGraphicsEffect(shadowEffect);
 
     //设置按钮图标
     ui->silenceBtn->setIcon(QIcon(":/images/volumn.png"));
     //将默认音量设置为20%
     ui->volumeRatio->setText("20%");
-    //设置outline尺寸
+    //设置outline尺寸(音量滑条)
     QRect rect=ui->outLine->geometry();
     //窗体原本高度180*20%
     ui->outLine->setGeometry(rect.x(),rect.height()-36+25,rect.width(),36);
@@ -42,7 +49,7 @@ VolumeTool::~VolumeTool()
 void VolumeTool::paintEvent(QPaintEvent *event)
 {
     //绘制VolumeTool界面下的三角
-    QPainter painter(this);
+    QPainter painter(this);//传this告诉painter在哪里画，这里是在volumeTool这个页面中画
     //设置画笔
     painter.setPen(Qt::NoPen);
     //设置画刷

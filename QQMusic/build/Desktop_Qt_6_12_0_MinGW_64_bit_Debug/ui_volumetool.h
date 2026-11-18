@@ -60,7 +60,7 @@ public:
         volumeRatio->setMinimumSize(QSize(0, 30));
         volumeRatio->setMaximumSize(QSize(16777215, 30));
         volumeRatio->setStyleSheet(QString::fromUtf8(""));
-        volumeRatio->setAlignment(Qt::AlignCenter);
+        volumeRatio->setAlignment(Qt::AlignmentFlag::AlignCenter);
         volumeBox = new QWidget(volumeWidget);
         volumeBox->setObjectName("volumeBox");
         volumeBox->setGeometry(QRect(0, 0, 80, 225));
@@ -72,8 +72,8 @@ public:
 "{\n"
 "	background-color:#ECECEC\n"
 "}"));
-        inLine->setFrameShape(QFrame::StyledPanel);
-        inLine->setFrameShadow(QFrame::Raised);
+        inLine->setFrameShape(QFrame::Shape::StyledPanel);
+        inLine->setFrameShadow(QFrame::Shadow::Raised);
         outLine = new QFrame(volumeBox);
         outLine->setObjectName("outLine");
         outLine->setGeometry(QRect(38, 25, 4, 180));
@@ -81,8 +81,8 @@ public:
 "{\n"
 "	background-color:#1ECC94;\n"
 "}"));
-        outLine->setFrameShape(QFrame::StyledPanel);
-        outLine->setFrameShadow(QFrame::Raised);
+        outLine->setFrameShape(QFrame::Shape::StyledPanel);
+        outLine->setFrameShadow(QFrame::Shadow::Raised);
         silderBtn = new QPushButton(volumeBox);
         silderBtn->setObjectName("silderBtn");
         silderBtn->setGeometry(QRect(33, 18, 14, 14));

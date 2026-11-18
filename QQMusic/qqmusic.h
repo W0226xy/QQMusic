@@ -36,7 +36,7 @@ private slots:
     void on_quit_clicked();
     void onBtFormClick(int pageId);
 
-    void on_volume_clicked();
+    void on_volume_clicked();//音量按钮点击后显示VolumeTool窗口
 
     void on_addLocal_clicked();
 
@@ -89,21 +89,21 @@ private:
 
     QPoint dragPosition;
 
-    VolumeTool* volumeTool;
+    VolumeTool* volumeTool;//音量控制
 
     MusicList musicList;
 
     QMediaPlayer* player;
     QAudioOutput* audioOutput;
     enum class MusicSource { Local, Online };
-    struct PlaybackItem {
-        MusicSource source = MusicSource::Local;
-        QString id;
-        QString name;
-        QString artist;
-        QUrl url;
-        QUrl coverUrl;
-        qint64 duration = 0;
+    struct PlaybackItem {//音乐播放器统一使用的数据
+        MusicSource source = MusicSource::Local;//播放来源
+        QString id;//歌曲id
+        QString name;//歌曲名
+        QString artist;//歌手
+        QUrl url;//音频地址
+        QUrl coverUrl;//封面地址
+        qint64 duration = 0;//歌曲时长
     };
     QList<PlaybackItem> currentQueue;
     enum class PlaybackMode { Loop, Random, CurrentItemInLoop };
@@ -116,10 +116,10 @@ private:
     QSqlDatabase sqlite;
     OnlineMusicService *onlineMusicService;
     QList<OnlineTrack> onlineTracks;
-    QSet<QString> recentlyRecommendedIds;
+    QSet<QString> recentlyRecommendedIds;//最近推荐过的歌曲id
     QPushButton *refreshRecommendationsButton;
     QLabel *recommendationStatusLabel;
-    QNetworkAccessManager coverManager;
+    QNetworkAccessManager coverManager;//用于下载在线音乐封面
     quint64 coverRequestSerial = 0;
 
     void playAt(int index);

@@ -30,12 +30,12 @@ void CommonPage::setMusicListType(PageType pageType)
 }
 
 
-
+//设置当前界面上方图片（主要涉及三个页面：我喜欢、本地音乐、最近播放）
 void CommonPage::setCommonPageUi(const QString &text, const QString &imagePath)
 {
-    ui->PageTittle->setText(text);
+    ui->PageTittle->setText(text);//设置页面上方文本（我喜欢、本地音乐、最近播放）
     ui->musicImageLabel->setPixmap(QPixmap(imagePath));//把图片设置到musicImageLabel组件
-    ui->musicImageLabel->setScaledContents(true);
+    ui->musicImageLabel->setScaledContents(true);//图片自动缩放
 }
 
 void CommonPage::addMusicToMusicPage(MusicList &musicList)
