@@ -82,12 +82,14 @@ private slots:
     void on_max_clicked();
 
 protected:
-    virtual void mouseMoveEvent(QMouseEvent * event);
-    virtual void mousePressEvent(QMouseEvent * event);
+    void changeEvent(QEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 private:
     Ui::QQMusic *ui;
 
-    QPoint dragPosition;
+    QPoint dragPosition;//鼠标按下的位置，相对于窗口左上角的偏移量。这里的窗口指的是QQMusic的窗口
 
     VolumeTool* volumeTool;//音量控制
 
@@ -126,5 +128,6 @@ private:
     void playNext(bool previous = false);
     void updateCurrentTrackUi();
     void loadCurrentCover(const QUrl &url);
+    void updateMaximizeButton();
 };
 #endif // QQMUSIC_H

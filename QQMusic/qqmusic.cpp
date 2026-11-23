@@ -14,6 +14,8 @@
 #include<QRandomGenerator>
 #include<QNetworkReply>
 #include<QTimer>
+#include<QEvent>
+#include<QResizeEvent>
 QQMusic::QQMusic(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::QQMusic)
@@ -45,6 +47,7 @@ void QQMusic::initui()
     //设置窗口背景透明
     setAttribute(Qt::WA_TranslucentBackground);
     setWindowIcon(QIcon(":/images/tubiao.png"));
+    updateMaximizeButton();
 
     //窗口设置阴影
     QGraphicsDropShadowEffect* shadowEffect=new QGraphicsDropShadowEffect(this);
@@ -301,7 +304,7 @@ void QQMusic::onBtFormClick(int pageId)
 
 void QQMusic::mouseMoveEvent(QMouseEvent *event)
 {
-    if(Qt::LeftButton==event->buttons())//如果当前移动过程中左键还处于按下状态，就移动窗口。buttons()，表示当前所有正在按下的按键状态
+    if(Qt::LeftButton==event->buttons())
     {
         move(event->globalPosition().toPoint()-dragPosition);//移动窗口
         qDebug()<<"move";
@@ -323,6 +326,12 @@ void QQMusic::mousePressEvent(QMouseEvent *event)
     }
     QWidget::mousePressEvent(event);
 
+}
+
+void QQMusic::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    updateMaximizeButton();
 }
 
 //音量控件点击后，可以显示拖拽音量的框
@@ -836,5 +845,33 @@ void QQMusic::on_min_clicked()
 
 void QQMusic::on_max_clicked()
 {
-    showMaximized();
+    if (isMaximized())
+        showNormal();
+    else
+        showMaximized();
+
+    updateMaximizeButton();
+}
+
+void QQMusic::changeEvent(QEvent *event)
+{
+    qDebug()<<"窗口大小改变";
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange)
+        updateMaximizeButton();
+}
+
+void QQMusic::updateMaximizeButton()
+{
+    if (!ui || !ui->max || !ui->background)
+        return;
+
+    const bool maximized = isMaximized();
+
+
+    // background 是绝对定位的直接子控件，需要随顶层窗口同步缩放。
+    // 普通状态保留阴影边距，最大化时铺满整个窗口。
+    ui->background->setGeometry(maximized
+                                ? rect()
+                                : rect().adjusted(9, 9, -12, -17));
 }

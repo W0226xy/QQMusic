@@ -93,7 +93,4 @@ void BtForm::mousePressEvent(QMouseEvent *event)
     //3.按钮和page页面的对应关系？
     emit btClick(pageId);//鼠标点击btform，发送信号切换页面
 
-
-
-
 }
